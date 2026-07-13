@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>师姐返京 · 欢迎饭局小站</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+
+  <header class="topbar glass">
+    <div class="brand">✨ 若桐师姐返京欢迎饭局</div>
+    <div class="top-actions">
+      <button id="musicToggle" class="btn btn-soft" type="button">🎵 开启BGM</button>
+      <input id="musicVolume" type="range" min="0" max="1" step="0.05" value="0.35" aria-label="BGM 音量" />
+    </div>
+    <audio
+      id="bgm"
+      loop
+      preload="metadata"
+      src="https://upload.wikimedia.org/wikipedia/commons/4/45/Monplaisir_-_07_-_Morning_Sunshine.mp3"
+    ></audio>
+  </header>
+
+  <main class="container">
+    <section id="welcome" class="welcome glass">
+      <p class="eyebrow">WELCOME BACK TO BEIJING</p>
+      <h1>师姐，欢迎回来！ 👋</h1>
+      <p>
+        我做了一个小小的“饭局策划器”，根据提示操作即可哦~
+      </p>
+      <button id="startBtn" class="btn btn-primary" type="button">开始选择</button>
+    </section>
+
+    <section id="flowSection" class="flow glass hidden" aria-live="polite">
+      <div class="flow-head">
+        <p id="progressText">第 1 / 7 步</p>
+        <div class="progress-track"><span id="progressBar"></span></div>
+      </div>
+
+      <form id="flowForm" novalidate>
+        <div id="questionStage" class="question-stage"></div>
+
+        <p id="tipText" class="tip"></p>
+
+        <div class="nav-actions">
+          <button id="prevBtn" type="button" class="btn btn-ghost" disabled>上一步</button>
+          <button id="nextBtn" type="button" class="btn btn-primary">下一步</button>
+          <button id="submitBtn" type="submit" class="btn btn-primary hidden">生成饭局卡片</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="resultSection" class="result glass hidden">
+      <h2>🎉 师姐专属饭局卡片</h2>
+      <p class="sub">确认后我就按这个方案尽快订店并和你确认。</p>
+      <pre id="resultText"></pre>
+      <div class="result-actions">
+        <button id="confirmBtn" type="button" class="btn btn-soft">确认</button>
+        <button id="restartBtn" type="button" class="btn btn-ghost">重新选择</button>
+      </div>
+
+      <div id="recordPanel" class="record-panel hidden">
+        <h3>填写记录（后台查看）</h3>
+        <ul id="recordList"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
