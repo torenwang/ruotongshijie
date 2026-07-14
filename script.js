@@ -576,6 +576,31 @@ function bindFlowEvents() {
   });
 }
 
+async function tryPlayWithFallback() {
+  const tried = new Set();
+  const candidates = [bgm.src, ...BGM_SOURCES].filter(Boolean);
+
+  for (const src of candidates) {
+    if (tried.has(src)) {
+      continue;
+    }
+    tried.add(src);
+
+    try {
+      if (bgm.src !== src) {
+        bgm.src = src;
+      }
+      bgm.load();
+      await bgm.play();
+      return true;
+    } catch (error) {
+      console.warn("音源尝试失败", src, error);
+    }
+  }
+
+  return false;
+}
+
 function bindMusicEvents() {
   bgm.volume = Number(musicVolume.value);
 
@@ -593,24 +618,12 @@ function bindMusicEvents() {
     musicToggle.disabled = true;
     musicToggle.textContent = "🎵 正在播放...";
 
-    try {
-      await bgm.play();
-      musicToggle.textContent = "⏸ 暂停BGM";
-    } catch (err) {
-      try {
-        bgm.src = BGM_BACKUP_URL;
-        bgm.load();
-        await bgm.play();
-        musicToggle.textContent = "⏸ 暂停BGM";
-      } catch (backupErr) {
-        console.warn("BGM 播放失败", err, backupErr);
-        musicToggle.textContent = "🎵 播放失败，点我重试";
-      }
-    } finally {
-      musicToggle.disabled = false;
-    }
+    const ok = await tryPlayWithFallback();
+    musicToggle.textContent = ok ? "⏸ 暂停BGM" : "🎵 播放失败，点我重试";
+    musicToggle.disabled = false;
   });
 }
+
 
 
 function init() {
