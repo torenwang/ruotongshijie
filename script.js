@@ -30,6 +30,13 @@ const cuisineOptions = [
 const STORAGE_KEY = "meal_flow_records_v1";
 const CLOUD_ENV_ID = "torenwang-d2gbekikab13dfdaa";
 const CLOUD_FUNCTION_NAME = "saveMealRecord";
+const BGM_SOURCES = [
+  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+  "https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3",
+  "https://raw.githubusercontent.com/anars/blank-audio/master/5-seconds-of-silence.mp3"
+];
+
+
 
 
 const questionStage = document.getElementById("questionStage");
