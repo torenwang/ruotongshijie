@@ -164,18 +164,20 @@
           data: { limit: 100 }
         });
 
-        const result = res?.result || {};
-        if (!result.success) {
+        const result = res?.result || res || {};
+        if (result.success === false) {
           throw new Error(result.message || "获取失败");
         }
 
-        render(result.records || []);
-        statusEl.textContent = `已加载 ${result.records?.length || 0} 条记录`;
+        const records = Array.isArray(result.records) ? result.records : [];
+        render(records);
+        statusEl.textContent = `已加载 ${records.length} 条记录`;
       } catch (error) {
-        statusEl.textContent = `加载失败：${error.message}`;
+        statusEl.textContent = `加载失败：${getErrorMessage(error)}`;
         listEl.innerHTML = "";
       }
     }
+
 
     refreshBtn.addEventListener("click", fetchRecords);
     fetchRecords();
