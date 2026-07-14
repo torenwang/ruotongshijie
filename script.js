@@ -56,9 +56,6 @@ const confirmBtn = document.getElementById("confirmBtn");
 const restartBtn = document.getElementById("restartBtn");
 const recordPanel = document.getElementById("recordPanel");
 const recordList = document.getElementById("recordList");
-const bgm = document.getElementById("bgm");
-const musicToggle = document.getElementById("musicToggle");
-const musicVolume = document.getElementById("musicVolume");
 
 const cloudApp = window.cloudbase ? window.cloudbase.init({ env: CLOUD_ENV_ID }) : null;
 let cloudReady = false;
@@ -636,9 +633,9 @@ function bindMusicEvents() {
 function init() {
   resetFlow();
   bindFlowEvents();
-  bindMusicEvents();
   initCloud();
 }
+
 
 
 
