@@ -30,11 +30,7 @@ const cuisineOptions = [
 const STORAGE_KEY = "meal_flow_records_v1";
 const CLOUD_ENV_ID = "torenwang-d2gbekikab13dfdaa";
 const CLOUD_FUNCTION_NAME = "saveMealRecord";
-const BGM_SOURCES = [
-  "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3",
-  "https://raw.githubusercontent.com/anars/blank-audio/master/5-seconds-of-silence.mp3"
-];
+
 
 
 
@@ -427,6 +423,8 @@ async function initCloud() {
     return;
   }
 
+  cloudReady = true;
+
   try {
     const auth = cloudApp.auth({ persistence: "local" });
     if (typeof auth.signInAnonymously === "function") {
@@ -434,29 +432,37 @@ async function initCloud() {
     } else {
       await auth.anonymousAuthProvider().signIn();
     }
-    cloudReady = true;
   } catch (error) {
-    cloudReady = false;
-    console.warn("CloudBase 初始化失败", error);
+    console.warn("CloudBase 匿名登录失败，将继续直接尝试云函数调用", error);
   }
 }
 
+
 async function saveRecordToCloud(content) {
   if (!cloudReady || !cloudApp) {
-    return;
+    return { ok: false, reason: "cloud_not_ready" };
   }
 
   try {
-    await cloudApp.callFunction({
+    const res = await cloudApp.callFunction({
       name: CLOUD_FUNCTION_NAME,
       data: {
         payload: buildCloudPayload(content)
       }
     });
+
+    const result = res?.result || {};
+    if (result.success === false) {
+      throw new Error(result.message || "云端保存失败");
+    }
+
+    return { ok: true };
   } catch (error) {
     console.warn("云端保存失败", error);
+    return { ok: false, error };
   }
 }
+
 
 function loadRecords() {
 
@@ -546,6 +552,7 @@ function bindFlowEvents() {
     confirmedResult = "";
     resultText.textContent = content;
     if (confirmBtn) {
+      confirmBtn.disabled = false;
       confirmBtn.textContent = "确认";
     }
     resultSection.classList.remove("hidden");
@@ -558,17 +565,23 @@ function bindFlowEvents() {
       if (!pendingResult) {
         return;
       }
+
       if (pendingResult !== confirmedResult) {
         saveRecord(pendingResult);
-        await saveRecordToCloud(pendingResult);
+        const cloudSave = await saveRecordToCloud(pendingResult);
         confirmedResult = pendingResult;
+
+        if (cloudSave.ok) {
+          confirmBtn.textContent = "已确认 ✅";
+        } else {
+          confirmBtn.textContent = "已确认（仅本机）";
+        }
       }
-      confirmBtn.textContent = "已确认 ✅";
-      setTimeout(() => {
-        confirmBtn.textContent = "确认";
-      }, 1200);
+
+      confirmBtn.disabled = true;
     });
   }
+
 
 
   restartBtn.addEventListener("click", () => {
@@ -580,53 +593,7 @@ function bindFlowEvents() {
   });
 }
 
-async function tryPlayWithFallback() {
-  const tried = new Set();
-  const candidates = [bgm.src, ...BGM_SOURCES].filter(Boolean);
 
-  for (const src of candidates) {
-    if (tried.has(src)) {
-      continue;
-    }
-    tried.add(src);
-
-    try {
-      if (bgm.src !== src) {
-        bgm.src = src;
-      }
-      bgm.load();
-      await bgm.play();
-      return true;
-    } catch (error) {
-      console.warn("音源尝试失败", src, error);
-    }
-  }
-
-  return false;
-}
-
-function bindMusicEvents() {
-  bgm.volume = Number(musicVolume.value);
-
-  musicVolume.addEventListener("input", () => {
-    bgm.volume = Number(musicVolume.value);
-  });
-
-  musicToggle.addEventListener("click", async () => {
-    if (!bgm.paused) {
-      bgm.pause();
-      musicToggle.textContent = "🎵 开启BGM";
-      return;
-    }
-
-    musicToggle.disabled = true;
-    musicToggle.textContent = "🎵 正在播放...";
-
-    const ok = await tryPlayWithFallback();
-    musicToggle.textContent = ok ? "⏸ 暂停BGM" : "🎵 播放失败，点我重试";
-    musicToggle.disabled = false;
-  });
-}
 
 
 
