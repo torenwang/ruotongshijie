@@ -65,14 +65,18 @@
     <div id="list"></div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@cloudbase/js-sdk@2.20.0/dist/cloudbase.full.js"></script>
   <script>
     const CLOUD_ENV_ID = "torenwang-d2gbekikab13dfdaa";
+    const SDK_URLS = [
+      "https://imgcache.qq.com/qcloud/tcbjs/2.20.0/cloudbase.full.js",
+      "https://cdn.jsdelivr.net/npm/@cloudbase/js-sdk@2.20.0/dist/cloudbase.full.js"
+    ];
+
     const statusEl = document.getElementById("status");
     const listEl = document.getElementById("list");
     const refreshBtn = document.getElementById("refreshBtn");
 
-    const app = window.cloudbase.init({ env: CLOUD_ENV_ID });
+    let app = null;
 
     function esc(text) {
       return String(text)
@@ -108,14 +112,51 @@
       }).join("");
     }
 
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error(`加载失败: ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensureCloudbaseSdk() {
+      if (window.cloudbase) {
+        return;
+      }
+      let lastError = null;
+      for (const url of SDK_URLS) {
+        try {
+          await loadScript(url);
+          if (window.cloudbase) {
+            return;
+          }
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError || new Error("CloudBase SDK 加载失败");
+    }
+
+    async function initCloud() {
+      await ensureCloudbaseSdk();
+      app = window.cloudbase.init({ env: CLOUD_ENV_ID });
+      const auth = app.auth({ persistence: "local" });
+      if (typeof auth.signInAnonymously === "function") {
+        await auth.signInAnonymously();
+      } else {
+        await auth.anonymousAuthProvider().signIn();
+      }
+    }
+
     async function fetchRecords() {
       statusEl.textContent = "正在加载记录...";
       try {
-        const auth = app.auth({ persistence: "local" });
-        if (typeof auth.signInAnonymously === "function") {
-          await auth.signInAnonymously();
-        } else {
-          await auth.anonymousAuthProvider().signIn();
+        if (!app) {
+          await initCloud();
         }
 
         const res = await app.callFunction({
