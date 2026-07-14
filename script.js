@@ -30,6 +30,8 @@ const cuisineOptions = [
 const STORAGE_KEY = "meal_flow_records_v1";
 const CLOUD_ENV_ID = "torenwang-d2gbekikab13dfdaa";
 const CLOUD_FUNCTION_NAME = "saveMealRecord";
+const SAVE_API_URL = "https://torenwang-d2gbekikab13dfdaa.service.tcloudbase.com/api/save";
+
 
 
 
@@ -52,9 +54,6 @@ const confirmBtn = document.getElementById("confirmBtn");
 const restartBtn = document.getElementById("restartBtn");
 const recordPanel = document.getElementById("recordPanel");
 const recordList = document.getElementById("recordList");
-
-const cloudApp = window.cloudbase ? window.cloudbase.init({ env: CLOUD_ENV_ID }) : null;
-let cloudReady = false;
 
 
 const state = {
@@ -419,41 +418,21 @@ function buildCloudPayload(content) {
 }
 
 async function initCloud() {
-  if (!cloudApp) {
-    return;
-  }
-
-  cloudReady = true;
-
-  try {
-    const auth = cloudApp.auth({ persistence: "local" });
-    if (typeof auth.signInAnonymously === "function") {
-      await auth.signInAnonymously();
-    } else {
-      await auth.anonymousAuthProvider().signIn();
-    }
-  } catch (error) {
-    console.warn("CloudBase 匿名登录失败，将继续直接尝试云函数调用", error);
-  }
+  // 保存已改为通过 HTTP 网关直连，无需 SDK 与登录。
 }
 
 
 async function saveRecordToCloud(content) {
-  if (!cloudReady || !cloudApp) {
-    return { ok: false, reason: "cloud_not_ready" };
-  }
-
   try {
-    const res = await cloudApp.callFunction({
-      name: CLOUD_FUNCTION_NAME,
-      data: {
-        payload: buildCloudPayload(content)
-      }
+    const res = await fetch(SAVE_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload: buildCloudPayload(content) })
     });
 
-    const result = res?.result || {};
-    if (result.success === false) {
-      throw new Error(result.message || "云端保存失败");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+      throw new Error(data.message || `HTTP ${res.status}`);
     }
 
     return { ok: true };
