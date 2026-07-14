@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>饭局记录后台</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(145deg, #0a102c, #1a2251);
+      color: #eef3ff;
+      min-height: 100vh;
+    }
+    .wrap {
+      width: min(980px, calc(100% - 24px));
+      margin: 24px auto;
+    }
+    .card {
+      background: rgba(19, 30, 78, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+    }
+    .head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      color: #fff;
+      background: #5a78ff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .muted { color: #b9c7f5; }
+    pre {
+      margin: 8px 0 0;
+      white-space: pre-wrap;
+      background: rgba(8, 24, 56, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card head">
+      <div>
+        <h2 style="margin:0 0 6px">饭局填写记录后台</h2>
+        <p class="muted" id="status" style="margin:0">正在连接 CloudBase...</p>
+      </div>
+      <button id="refreshBtn" type="button">刷新记录</button>
+    </section>
+
+    <div id="list"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@cloudbase/js-sdk@2.20.0/dist/cloudbase.full.js"></script>
+  <script>
+    const CLOUD_ENV_ID = "torenwang-d2gbekikab13dfdaa";
+    const statusEl = document.getElementById("status");
+    const listEl = document.getElementById("list");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    const app = window.cloudbase.init({ env: CLOUD_ENV_ID });
+
+    function esc(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function render(records) {
+      if (!Array.isArray(records) || records.length === 0) {
+        listEl.innerHTML = '<section class="card"><p class="muted" style="margin:0">目前还没有确认提交记录。</p></section>';
+        return;
+      }
+
+      listEl.innerHTML = records.map((item) => {
+        const lines = [
+          `- 回京日期：${item.returnDate || ""}`,
+          `- 到站时间段：${item.arrivalSlot || ""}`,
+          `- 更想吃：${item.mealType || ""}`,
+          `- 菜系偏好：${Array.isArray(item.cuisines) ? item.cuisines.join("、") : ""}${item.otherCuisine ? `（其它：${item.otherCuisine}）` : ""}`,
+          `- 接站安排：${item.pickup || ""}`,
+          `- 区域范围：${item.area || "未指定"}`,
+          `- 忌口信息：${item.diet || "无"}`,
+          `- 其他备注：${item.remark || "无"}`
+        ].join("\n");
+
+        return `
+          <section class="card">
+            <strong>${esc(item.createdAtText || "未记录时间")}</strong>
+            <pre>${esc(lines)}</pre>
+          </section>
+        `;
+      }).join("");
+    }
+
+    async function fetchRecords() {
+      statusEl.textContent = "正在加载记录...";
+      try {
+        const auth = app.auth({ persistence: "local" });
+        if (typeof auth.signInAnonymously === "function") {
+          await auth.signInAnonymously();
+        } else {
+          await auth.anonymousAuthProvider().signIn();
+        }
+
+        const res = await app.callFunction({
+          name: "listMealRecords",
+          data: { limit: 100 }
+        });
+
+        const result = res?.result || {};
+        if (!result.success) {
+          throw new Error(result.message || "获取失败");
+        }
+
+        render(result.records || []);
+        statusEl.textContent = `已加载 ${result.records?.length || 0} 条记录`;
+      } catch (error) {
+        statusEl.textContent = `加载失败：${error.message}`;
+        listEl.innerHTML = "";
+      }
+    }
+
+    refreshBtn.addEventListener("click", fetchRecords);
+    fetchRecords();
+  </script>
+</body>
+</html>
