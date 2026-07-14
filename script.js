@@ -584,27 +584,42 @@ function bindMusicEvents() {
   });
 
   musicToggle.addEventListener("click", async () => {
-    if (bgm.paused) {
-      try {
-        await bgm.play();
-        musicToggle.textContent = "⏸ 暂停BGM";
-      } catch {
-        musicToggle.textContent = "浏览器限制了自动播放，再点一次";
-      }
-    } else {
+    if (!bgm.paused) {
       bgm.pause();
       musicToggle.textContent = "🎵 开启BGM";
+      return;
+    }
+
+    musicToggle.disabled = true;
+    musicToggle.textContent = "🎵 正在播放...";
+
+    try {
+      await bgm.play();
+      musicToggle.textContent = "⏸ 暂停BGM";
+    } catch (err) {
+      try {
+        bgm.src = BGM_BACKUP_URL;
+        bgm.load();
+        await bgm.play();
+        musicToggle.textContent = "⏸ 暂停BGM";
+      } catch (backupErr) {
+        console.warn("BGM 播放失败", err, backupErr);
+        musicToggle.textContent = "🎵 播放失败，点我重试";
+      }
+    } finally {
+      musicToggle.disabled = false;
     }
   });
 }
 
+
 function init() {
-  loadRecords();
   resetFlow();
   bindFlowEvents();
   bindMusicEvents();
   initCloud();
 }
+
 
 
 init();
