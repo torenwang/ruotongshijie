@@ -28,6 +28,9 @@ const cuisineOptions = [
 ];
 
 const STORAGE_KEY = "meal_flow_records_v1";
+const CLOUD_ENV_ID = "torenwang-d2gbekikab13dfdaa";
+const CLOUD_FUNCTION_NAME = "saveMealRecord";
+
 
 const questionStage = document.getElementById("questionStage");
 const flowForm = document.getElementById("flowForm");
@@ -49,6 +52,10 @@ const recordList = document.getElementById("recordList");
 const bgm = document.getElementById("bgm");
 const musicToggle = document.getElementById("musicToggle");
 const musicVolume = document.getElementById("musicVolume");
+
+const cloudApp = window.cloudbase ? window.cloudbase.init({ env: CLOUD_ENV_ID }) : null;
+let cloudReady = false;
+
 
 const state = {
   returnDate: "",
@@ -396,7 +403,59 @@ function buildResult() {
   return lines.join("\n");
 }
 
+function buildCloudPayload(content) {
+  return {
+    returnDate: state.returnDate,
+    arrivalSlot: state.arrivalSlot,
+    mealType: state.mealType,
+    cuisines: [...state.cuisines],
+    otherCuisine: state.otherCuisine,
+    pickup: state.pickup,
+    area: state.area,
+    diet: state.diet,
+    remark: state.remark,
+    cardText: content
+  };
+}
+
+async function initCloud() {
+  if (!cloudApp) {
+    return;
+  }
+
+  try {
+    const auth = cloudApp.auth({ persistence: "local" });
+    if (typeof auth.signInAnonymously === "function") {
+      await auth.signInAnonymously();
+    } else {
+      await auth.anonymousAuthProvider().signIn();
+    }
+    cloudReady = true;
+  } catch (error) {
+    cloudReady = false;
+    console.warn("CloudBase 初始化失败", error);
+  }
+}
+
+async function saveRecordToCloud(content) {
+  if (!cloudReady || !cloudApp) {
+    return;
+  }
+
+  try {
+    await cloudApp.callFunction({
+      name: CLOUD_FUNCTION_NAME,
+      data: {
+        payload: buildCloudPayload(content)
+      }
+    });
+  } catch (error) {
+    console.warn("云端保存失败", error);
+  }
+}
+
 function loadRecords() {
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     records = raw ? JSON.parse(raw) : [];
@@ -491,12 +550,13 @@ function bindFlowEvents() {
 
   if (confirmBtn) {
     confirmBtn.textContent = "确认";
-    confirmBtn.addEventListener("click", () => {
+    confirmBtn.addEventListener("click", async () => {
       if (!pendingResult) {
         return;
       }
       if (pendingResult !== confirmedResult) {
         saveRecord(pendingResult);
+        await saveRecordToCloud(pendingResult);
         confirmedResult = pendingResult;
       }
       confirmBtn.textContent = "已确认 ✅";
@@ -505,6 +565,7 @@ function bindFlowEvents() {
       }, 1200);
     });
   }
+
 
   restartBtn.addEventListener("click", () => {
     resultSection.classList.add("hidden");
@@ -542,6 +603,8 @@ function init() {
   resetFlow();
   bindFlowEvents();
   bindMusicEvents();
+  initCloud();
 }
+
 
 init();
